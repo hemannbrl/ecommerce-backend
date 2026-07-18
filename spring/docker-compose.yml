@@ -1,0 +1,32 @@
+# Brings up the Spring Boot API and its own PostgreSQL, with the shared schema
+# and seed loaded automatically on first start.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ecommerce_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - ../db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ../db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ecommerce_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/ecommerce_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: change-me-in-production-to-a-long-random-string
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy

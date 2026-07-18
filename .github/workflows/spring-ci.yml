@@ -1,0 +1,23 @@
+name: spring-ci
+
+on:
+  push:
+    paths: ["spring/**", "db/**", ".github/workflows/spring-ci.yml"]
+  pull_request:
+    paths: ["spring/**", "db/**", ".github/workflows/spring-ci.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spring
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      # Testcontainers starts its own PostgreSQL via the runner's Docker daemon.
+      - run: ./mvnw -B test

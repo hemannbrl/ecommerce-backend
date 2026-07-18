@@ -1,0 +1,301 @@
+openapi: 3.0.3
+info:
+  title: E-Commerce Backend API
+  version: 1.0.0
+  description: >
+    The shared contract implemented identically by the Django, Spring Boot, and
+    Express backends. Same paths, same request/response shapes, same status codes —
+    so the three are interchangeable behind this spec.
+servers:
+  - url: http://localhost:8000
+    description: Django
+  - url: http://localhost:8080
+    description: Spring Boot
+  - url: http://localhost:3000
+    description: Express
+
+tags:
+  - name: Auth
+  - name: Catalog
+  - name: Cart
+  - name: Orders
+  - name: Health
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      responses:
+        "200": { description: OK }
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new customer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/AuthResponse" } } } }
+        "409": { description: Email already registered }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in, receive a JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AuthResponse" } } } }
+        "401": { description: Invalid credentials }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      security: [{ bearerAuth: [] }]
+      summary: The current user
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/User" } } } }
+        "401": { description: Unauthenticated }
+
+  /products:
+    get:
+      tags: [Catalog]
+      summary: List products (search, filter, sort, paginate)
+      parameters:
+        - { name: search,   in: query, schema: { type: string } }
+        - { name: category, in: query, schema: { type: string }, description: category slug }
+        - { name: sort,     in: query, schema: { type: string, enum: [price, -price, name, -name, newest] } }
+        - { name: page,     in: query, schema: { type: integer, default: 1 } }
+        - { name: page_size,in: query, schema: { type: integer, default: 20 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ProductPage" } } } }
+    post:
+      tags: [Catalog]
+      security: [{ bearerAuth: [] }]
+      summary: Create a product (admin)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ProductWrite" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Product" } } } }
+        "403": { description: Not an admin }
+
+  /products/{id}:
+    get:
+      tags: [Catalog]
+      summary: Product detail
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Product" } } } }
+        "404": { description: Not found }
+    patch:
+      tags: [Catalog]
+      security: [{ bearerAuth: [] }]
+      summary: Update a product (admin)
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/ProductWrite" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Product" } } } }
+        "403": { description: Not an admin }
+    delete:
+      tags: [Catalog]
+      security: [{ bearerAuth: [] }]
+      summary: Delete a product (admin)
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "204": { description: Deleted }
+        "403": { description: Not an admin }
+
+  /categories:
+    get:
+      tags: [Catalog]
+      summary: List categories
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Category" } } } } }
+
+  /cart:
+    get:
+      tags: [Cart]
+      security: [{ bearerAuth: [] }]
+      summary: The current user's cart
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Cart" } } } }
+
+  /cart/items:
+    post:
+      tags: [Cart]
+      security: [{ bearerAuth: [] }]
+      summary: Add an item to the cart (or increase quantity)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CartItemWrite" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Cart" } } } }
+        "404": { description: Product not found }
+
+  /cart/items/{id}:
+    patch:
+      tags: [Cart]
+      security: [{ bearerAuth: [] }]
+      summary: Set an item's quantity
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { quantity: { type: integer, minimum: 1 } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Cart" } } } }
+    delete:
+      tags: [Cart]
+      security: [{ bearerAuth: [] }]
+      summary: Remove an item from the cart
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Cart" } } } }
+
+  /orders:
+    get:
+      tags: [Orders]
+      security: [{ bearerAuth: [] }]
+      summary: The current user's orders
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Order" } } } } }
+    post:
+      tags: [Orders]
+      security: [{ bearerAuth: [] }]
+      summary: >
+        Checkout — turn the cart into an order atomically. Locks each product's
+        stock row, decrements it (the CHECK blocks overselling), snapshots prices,
+        and clears the cart. All-or-nothing.
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Order" } } } }
+        "409": { description: Insufficient stock, or empty cart }
+
+  /orders/{id}:
+    get:
+      tags: [Orders]
+      security: [{ bearerAuth: [] }]
+      summary: Order detail (owner or admin)
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Order" } } } }
+        "403": { description: Not the owner or an admin }
+        "404": { description: Not found }
+
+  /orders/{id}/status:
+    patch:
+      tags: [Orders]
+      security: [{ bearerAuth: [] }]
+      summary: Update order status (admin)
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { status: { $ref: "#/components/schemas/OrderStatus" } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Order" } } } }
+        "403": { description: Not an admin }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    AuthResponse:
+      type: object
+      properties:
+        token: { type: string }
+        user: { $ref: "#/components/schemas/User" }
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        email: { type: string }
+        role: { type: string, enum: [customer, admin] }
+    Category:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+    Product:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        price: { type: string, description: "decimal string, e.g. \"899.99\"" }
+        category_id: { type: integer, nullable: true }
+        is_active: { type: boolean }
+        stock: { type: integer, description: "current inventory quantity" }
+    ProductWrite:
+      type: object
+      required: [name, price]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        price: { type: string }
+        category_id: { type: integer, nullable: true }
+        is_active: { type: boolean }
+        stock: { type: integer }
+    ProductPage:
+      type: object
+      properties:
+        results: { type: array, items: { $ref: "#/components/schemas/Product" } }
+        page: { type: integer }
+        page_size: { type: integer }
+        total: { type: integer }
+    CartItemWrite:
+      type: object
+      required: [product_id, quantity]
+      properties:
+        product_id: { type: integer }
+        quantity: { type: integer, minimum: 1 }
+    CartItem:
+      type: object
+      properties:
+        id: { type: integer }
+        product_id: { type: integer }
+        name: { type: string }
+        unit_price: { type: string }
+        quantity: { type: integer }
+        line_total: { type: string }
+    Cart:
+      type: object
+      properties:
+        id: { type: integer }
+        items: { type: array, items: { $ref: "#/components/schemas/CartItem" } }
+        total: { type: string }
+    OrderStatus:
+      type: string
+      enum: [pending, paid, shipped, delivered, cancelled]
+    OrderItem:
+      type: object
+      properties:
+        product_id: { type: integer }
+        name: { type: string }
+        quantity: { type: integer }
+        unit_price: { type: string }
+    Order:
+      type: object
+      properties:
+        id: { type: integer }
+        status: { $ref: "#/components/schemas/OrderStatus" }
+        total: { type: string }
+        created_at: { type: string, format: date-time }
+        items: { type: array, items: { $ref: "#/components/schemas/OrderItem" } }
