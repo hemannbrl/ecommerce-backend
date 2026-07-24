@@ -39,7 +39,9 @@ Then run the app:
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env          # adjust DB_PORT etc. if needed
+# settings read from the environment; the defaults match ./db/setup.sh (localhost:5433),
+# so this runs as-is. To override, export the vars in .env.example (e.g. DB_PORT) first:
+#   set -a; source .env.example; set +a
 python manage.py runserver
 ```
 
