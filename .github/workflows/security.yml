@@ -1,0 +1,33 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  deps:
+    name: Dependency vulnerabilities (pip-audit · npm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: pip-audit (Django stack)
+        run: |
+          pip install pip-audit
+          pip-audit -r django/requirements.txt
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: npm audit (Express stack, high severity+)
+        working-directory: express
+        run: npm audit --audit-level=high
+    # (Maven deps for the Spring stack are covered by Dependabot's maven ecosystem.)

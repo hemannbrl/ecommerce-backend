@@ -13,4 +13,6 @@ COPY . .
 EXPOSE 8000
 
 # Gunicorn serves the WSGI app in production.
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+# gthread workers + threads so a slow request doesn't tie up a whole worker;
+# override the worker count with WEB_CONCURRENCY on bigger hosts.
+CMD ["sh", "-c", "gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers ${WEB_CONCURRENCY:-3} --worker-class gthread --threads 4 --worker-tmp-dir /dev/shm --timeout 60"]
