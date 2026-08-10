@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import express from "express";
+import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
 import YAML from "yaml";
 
@@ -15,6 +16,9 @@ import orderRoutes from "./routes/orders.js";
 
 export function createApp() {
   const app = express();
+  // Security headers (HSTS, X-Frame-Options, nosniff, Referrer-Policy, etc.). CSP
+  // is disabled so the bundled Swagger UI at /docs still loads its inline assets.
+  app.use(helmet({ contentSecurityPolicy: false }));
   app.use(express.json());
   app.use(authenticate); // populates req.user from the Bearer token if present
 
