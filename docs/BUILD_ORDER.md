@@ -36,7 +36,7 @@ Passwords are **bcrypt** hashes in `users.password_hash`, so the column is genui
 
 - **Spring Boot** — `BCryptPasswordEncoder`
 - **Express** — `bcrypt`
-- **Django** — verify bcrypt directly in the auth layer (custom API auth + SimpleJWT), not Django's
+- **Django** — verify bcrypt directly in the auth layer (custom API auth + PyJWT), not Django's
   default hasher, so it reads the same `$2b$` hashes.
 
 JWT is a signed bearer token carrying the user id and role; role gates the admin endpoints.
