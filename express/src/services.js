@@ -24,11 +24,22 @@ export async function cartItems(cartId) {
  * The database CHECK (quantity >= 0) is the final backstop against overselling.
  */
 export async function checkout(userId) {
-  const cart = await getOrCreateCart(userId);
-  const items = await cartItems(cart.id);
-  if (items.length === 0) throw conflict("Cart is empty");
-
   return prisma.$transaction(async (tx) => {
+    // Read the cart INSIDE the transaction so the item snapshot is atomic with
+    // the stock lock/decrement below (matches the Django/Spring implementations);
+    // reading it beforehand left a TOCTOU window on the cart contents.
+    const cart = await tx.cart.upsert({
+      where: { userId },
+      create: { userId },
+      update: {},
+    });
+    const items = await tx.cartItem.findMany({
+      where: { cartId: cart.id },
+      include: { product: true },
+      orderBy: { id: "asc" },
+    });
+    if (items.length === 0) throw conflict("Cart is empty");
+
     const order = await tx.order.create({
       data: { userId, status: "pending", total: 0 },
     });
